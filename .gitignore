@@ -1,0 +1,16 @@
+# Node.js dependencies
+node_modules/
+
+# Local environment files
+.env
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Application data
+data.json
