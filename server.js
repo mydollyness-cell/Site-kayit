@@ -134,6 +134,10 @@ app.get('/api/check', function (req, res) {
   });
 });
 
-app.listen(PORT, function () {
-  console.log('Server is running at http://localhost:' + PORT);
-});
+if (process.env.VERCEL !== '1') {
+  app.listen(PORT, function () {
+    console.log('Server is running at http://localhost:' + PORT);
+  });
+}
+
+module.exports = app;
