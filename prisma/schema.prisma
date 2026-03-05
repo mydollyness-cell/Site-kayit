@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Registration {
+  id            Int      @id @default(autoincrement())
+  block         String
+  apartment_no  Int
+  resident_type String
+  name_surname  String
+  created_at    DateTime @default(now())
+
+  @@unique([block, apartment_no, resident_type])
+}
