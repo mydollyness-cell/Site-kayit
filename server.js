@@ -1,8 +1,8 @@
 var express = require('express');
 var path = require('path');
-var { PrismaClient } = require('@prisma/client');
+var { neon } = require('@neondatabase/serverless');
 
-var prisma = new PrismaClient();
+var sql = neon(process.env.DATABASE_URL);
 var app = express();
 var PORT = process.env.PORT || 3000;
 
@@ -38,63 +38,46 @@ app.post('/api/register', function (req, res) {
     return res.status(400).json({ success: false, message: 'Ad soyad en az 3 karakter olmalidir.' });
   }
 
-  prisma.registration.findFirst({
-    where: { block: block, apartment_no: aptNo, resident_type: residentType }
-  }).then(function (existing) {
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        message: block + ' Blok, Daire ' + aptNo + ' icin "' + residentType + '" kaydi zaten mevcut.'
-      });
-    }
-    return prisma.registration.create({
-      data: {
-        block: block,
-        apartment_no: aptNo,
-        resident_type: residentType,
-        name_surname: nameSurname.trim()
+  sql('SELECT id FROM "Registration" WHERE block=$1 AND apartment_no=$2 AND resident_type=$3', [block, aptNo, residentType])
+    .then(function (rows) {
+      if (rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: block + ' Blok, Daire ' + aptNo + ' icin "' + residentType + '" kaydi zaten mevcut.'
+        });
       }
-    }).then(function () {
-      return res.json({
-        success: true,
-        message: 'Kayit basarili! ' + block + ' Blok, Daire ' + aptNo + ' - ' + residentType + ' olarak kaydedildi.'
-      });
+      return sql('INSERT INTO "Registration" (block, apartment_no, resident_type, name_surname) VALUES ($1,$2,$3,$4)', [block, aptNo, residentType, nameSurname.trim()])
+        .then(function () {
+          return res.json({
+            success: true,
+            message: 'Kayit basarili! ' + block + ' Blok, Daire ' + aptNo + ' - ' + residentType + ' olarak kaydedildi.'
+          });
+        });
+    })
+    .catch(function (err) {
+      console.error('Register error:', err);
+      return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
     });
-  }).catch(function (err) {
-    console.error('Register error:', err);
-    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
-  });
 });
 
 app.get('/api/registrations', function (req, res) {
-  prisma.registration.findMany({
-    orderBy: [{ block: 'asc' }, { apartment_no: 'asc' }]
-  }).then(function (rows) {
-    var result = rows.map(function (r) {
-      return {
-        id: r.id,
-        block: r.block,
-        apartment_no: r.apartment_no,
-        resident_type: r.resident_type,
-        created_at: r.created_at
-      };
+  sql('SELECT id, block, apartment_no, resident_type, created_at FROM "Registration" ORDER BY block ASC, apartment_no ASC')
+    .then(function (rows) {
+      return res.json({ success: true, data: rows, total: rows.length });
+    })
+    .catch(function (err) {
+      console.error('List error:', err);
+      return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
     });
-    return res.json({ success: true, data: result, total: result.length });
-  }).catch(function (err) {
-    console.error('List error:', err);
-    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
-  });
 });
 
 app.get('/api/export-excel', function (req, res) {
   var block = req.query.block || '';
-  var where = {};
-  if (block) { where.block = block; }
+  var query = block
+    ? sql('SELECT * FROM "Registration" WHERE block=$1 ORDER BY block ASC, apartment_no ASC', [block])
+    : sql('SELECT * FROM "Registration" ORDER BY block ASC, apartment_no ASC');
 
-  prisma.registration.findMany({
-    where: where,
-    orderBy: [{ block: 'asc' }, { apartment_no: 'asc' }]
-  }).then(function (rows) {
+  query.then(function (rows) {
     var BOM = '\uFEFF';
     var csv = BOM;
     csv += '#;Blok;Daire No;Oturum Sekli;Ad Soyad;Kayit Tarihi\n';
@@ -124,14 +107,14 @@ app.get('/api/check', function (req, res) {
   }
 
   var aptNo = parseInt(apartmentNo, 10);
-  prisma.registration.findFirst({
-    where: { block: block, apartment_no: aptNo, resident_type: residentType }
-  }).then(function (row) {
-    return res.json({ exists: !!row });
-  }).catch(function (err) {
-    console.error('Check error:', err);
-    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
-  });
+  sql('SELECT id FROM "Registration" WHERE block=$1 AND apartment_no=$2 AND resident_type=$3', [block, aptNo, residentType])
+    .then(function (rows) {
+      return res.json({ exists: rows.length > 0 });
+    })
+    .catch(function (err) {
+      console.error('Check error:', err);
+      return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
+    });
 });
 
 if (process.env.VERCEL !== '1') {
