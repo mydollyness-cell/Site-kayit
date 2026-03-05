@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<!-- v3 delete buttons -->
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Kayit Sistemi</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.container{background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.15);padding:40px 36px;width:100%;max-width:520px;animation:fadeIn .5s ease-out}
+@keyframes fadeIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+header{text-align:center;margin-bottom:24px}
+header h1{font-size:1.6rem;color:#2d3748;margin-bottom:6px}
+.subtitle{color:#718096;font-size:.95rem}
+.menu{display:flex;gap:8px;margin-bottom:28px;background:#f7fafc;border-radius:12px;padding:6px}
+.menu-btn{flex:1;padding:12px 16px;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;background:transparent;color:#718096;transition:all .25s ease}
+.menu-btn:hover{color:#4a5568;background:#edf2f7}
+.menu-btn.active{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;box-shadow:0 4px 12px rgba(102,126,234,.3)}
+.page{display:none}.page.active{display:block;animation:fadeIn .3s ease-out}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;font-size:.9rem;font-weight:600;color:#4a5568;margin-bottom:6px}
+.form-group select,.form-group input{width:100%;padding:12px 14px;border:2px solid #e2e8f0;border-radius:10px;font-size:1rem;color:#2d3748;background:#f7fafc;transition:border-color .2s ease,box-shadow .2s ease;outline:none;-webkit-appearance:none;appearance:none}
+.form-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a5568' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;cursor:pointer}
+.form-group select:focus,.form-group input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,.15);background:#fff}
+.form-group select.error,.form-group input.error{border-color:#e53e3e;box-shadow:0 0 0 3px rgba(229,62,62,.1)}
+button[type="submit"]{width:100%;padding:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;font-size:1.05rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:opacity .2s ease,transform .1s ease;margin-top:8px}
+button[type="submit"]:hover{opacity:.92}button[type="submit"]:active{transform:scale(.98)}button[type="submit"]:disabled{opacity:.6;cursor:not-allowed}
+.message{margin-top:20px;padding:14px 18px;border-radius:10px;font-size:.95rem;text-align:center;line-height:1.5;animation:slideIn .3s ease-out}
+@keyframes slideIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.message.success{background:#f0fff4;color:#276749;border:1px solid #c6f6d5}
+.message.error{background:#fff5f5;color:#c53030;border:1px solid #fed7d7}
+.hidden{display:none}
+.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.list-filter{display:flex;align-items:center;gap:8px}
+.list-filter label{font-size:.85rem;font-weight:600;color:#4a5568;white-space:nowrap}
+.list-filter select{padding:8px 32px 8px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:.9rem;color:#2d3748;background:#f7fafc;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a5568' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .2s ease}
+.list-filter select:focus{border-color:#667eea}
+.total-count{font-size:.85rem;color:#718096;font-weight:600}
+.total-count span{color:#667eea;font-weight:700}
+.registrations-list{overflow-x:auto}
+.reg-table{width:100%;border-collapse:collapse;font-size:.88rem}
+.reg-table thead th{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+.reg-table thead th:first-child{border-radius:8px 0 0 0}.reg-table thead th:last-child{border-radius:0 8px 0 0}
+.reg-table tbody tr{transition:background .15s ease}.reg-table tbody tr:nth-child(even){background:#f7fafc}.reg-table tbody tr:hover{background:#edf2f7}
+.reg-table tbody td{padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#4a5568}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.78rem;font-weight:600}
+.badge-owner{background:#ebf8ff;color:#2b6cb0}.badge-tenant{background:#fefcbf;color:#975a16}
+.empty-state{text-align:center;padding:40px 20px;color:#a0aec0}
+.empty-state .empty-icon{font-size:2.5rem;margin-bottom:12px}
+.empty-state p{font-size:.95rem}
+.loading-text{text-align:center;color:#a0aec0;padding:30px}
+.delete-btn{background:none;border:none;cursor:pointer;font-size:1.15rem;padding:4px 8px;border-radius:6px;transition:background .2s ease,transform .1s ease;opacity:.5}
+.delete-btn:hover{background:#fff5f5;opacity:1;transform:scale(1.15)}
+.delete-btn:active{transform:scale(.95)}
+@media(max-width:500px){.container{padding:28px 20px;border-radius:12px}header h1{font-size:1.35rem}.menu-btn{padding:10px 12px;font-size:.88rem}.form-group select,.form-group input{padding:11px 12px;font-size:.95rem}button[type="submit"]{padding:13px;font-size:1rem}.list-header{flex-direction:column;align-items:flex-start}.reg-table{font-size:.82rem}.reg-table thead th,.reg-table tbody td{padding:8px}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Site Kayit Sistemi</h1>
+<p class="subtitle">Daire sakinleri kayit formu</p>
+</header>
+<nav class="menu">
+<button class="menu-btn active" data-page="register">Kayit</button>
+<button class="menu-btn" data-page="list">Kayitlar</button>
+</nav>
+<section id="page-register" class="page active">
+<form id="registrationForm" novalidate>
+<div class="form-group">
+<label for="block">Blok Secimi</label>
+<select id="block" required>
+<option value="">-- Blok Seciniz --</option>
+<option value="A">A Blok</option><option value="B">B Blok</option><option value="C">C Blok</option>
+<option value="D">D Blok</option><option value="E">E Blok</option><option value="F">F Blok</option>
+<option value="G">G Blok</option>
+</select>
+</div>
+<div class="form-group">
+<label for="apartmentNo">Daire Numarasi</label>
+<input type="number" id="apartmentNo" placeholder="Orn: 12" min="1" required>
+</div>
+<div class="form-group">
+<label for="residentType">Oturum Sekli</label>
+<select id="residentType" required>
+<option value="">-- Seciniz --</option>
+<option value="Ev Sahibi">Ev Sahibi</option>
+<option value="Kiraci">Kiraci</option>
+</select>
+</div>
+<div class="form-group">
+<label for="nameSurname">Ad Soyad</label>
+<input type="text" id="nameSurname" placeholder="Adiniz ve Soyadiniz" required>
+</div>
+<button type="submit" id="submitBtn">
+<span class="btn-text">Kayit Ol</span>
+<span class="btn-loading hidden">Kaydediliyor...</span>
+</button>
+</form>
+<div id="message" class="message hidden"></div>
+</section>
+<section id="page-list" class="page">
+<div class="list-header">
+<div class="list-filter">
+<label for="filterBlock">Blok Filtrele:</label>
+<select id="filterBlock">
+<option value="">Tumu</option>
+<option value="A">A Blok</option><option value="B">B Blok</option><option value="C">C Blok</option>
+<option value="D">D Blok</option><option value="E">E Blok</option><option value="F">F Blok</option>
+<option value="G">G Blok</option>
+</select>
+</div>
+<p class="total-count">Toplam: <span id="totalCount">0</span> kayit</p>
+</div>
+<div id="registrationsList" class="registrations-list">
+<p class="loading-text">Yukleniyor...</p>
+</div>
+</section>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var menuBtns = document.querySelectorAll('.menu-btn');
+  var pages = document.querySelectorAll('.page');
+  var form = document.getElementById('registrationForm');
+  var blockSelect = document.getElementById('block');
+  var apartmentInput = document.getElementById('apartmentNo');
+  var residentTypeSelect = document.getElementById('residentType');
+  var nameSurnameInput = document.getElementById('nameSurname');
+  var submitBtn = document.getElementById('submitBtn');
+  var btnText = submitBtn.querySelector('.btn-text');
+  var btnLoading = submitBtn.querySelector('.btn-loading');
+  var messageDiv = document.getElementById('message');
+  var filterBlock = document.getElementById('filterBlock');
+  var totalCount = document.getElementById('totalCount');
+  var listContainer = document.getElementById('registrationsList');
+  var allRegistrations = [];
+  menuBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var t = btn.getAttribute('data-page');
+      menuBtns.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      pages.forEach(function (p) { p.classList.remove('active'); });
+      document.getElementById('page-' + t).classList.add('active');
+      if (t === 'list') { loadRegistrations(); }
+    });
+  });
+  [blockSelect, apartmentInput, residentTypeSelect, nameSurnameInput].forEach(function (el) {
+    el.addEventListener('input', function () { el.classList.remove('error'); hideMessage(); });
+    el.addEventListener('change', function () { el.classList.remove('error'); hideMessage(); });
+  });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault(); clearErrors(); hideMessage();
+    var hasError = false;
+    if (!blockSelect.value) { blockSelect.classList.add('error'); hasError = true; }
+    var aptNo = parseInt(apartmentInput.value, 10);
+    if (!apartmentInput.value || isNaN(aptNo) || aptNo < 1) { apartmentInput.classList.add('error'); hasError = true; }
+    if (!residentTypeSelect.value) { residentTypeSelect.classList.add('error'); hasError = true; }
+    if (!nameSurnameInput.value.trim() || nameSurnameInput.value.trim().length < 3) { nameSurnameInput.classList.add('error'); hasError = true; }
+    if (hasError) { showMessage('Lutfen tum alanlari doldurunuz.', 'error'); return; }
+    setLoading(true);
+    fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ block: blockSelect.value, apartmentNo: aptNo, residentType: residentTypeSelect.value, nameSurname: nameSurnameInput.value.trim() })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.success) { showMessage(data.message, 'success'); form.reset(); }
+      else { showMessage(data.message, 'error'); }
+    })
+    .catch(function () { showMessage('Baglanti hatasi.', 'error'); })
+    .finally(function () { setLoading(false); });
+  });
+  filterBlock.addEventListener('change', function () { renderList(); });
+  function loadRegistrations() {
+    listContainer.innerHTML = '<p class="loading-text">Yukleniyor...</p>';
+    fetch('/api/registrations')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data.success) { allRegistrations = data.data; renderList(); }
+        else { listContainer.innerHTML = '<p class="loading-text">Veriler yuklenemedi.</p>'; }
+      })
+      .catch(function () { listContainer.innerHTML = '<p class="loading-text">Baglanti hatasi.</p>'; });
+  }
+  function renderList() {
+    var filter = filterBlock.value;
+    var filtered = filter ? allRegistrations.filter(function (r) { return r.block === filter; }) : allRegistrations;
+    totalCount.textContent = filtered.length;
+    if (filtered.length === 0) {
+      listContainer.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128237;</div><p>' + (filter ? filter + ' Blok icin kayit bulunamadi.' : 'Henuz kayit bulunmuyor.') + '</p></div>';
+      return;
+    }
+    var html = '<table class="reg-table"><thead><tr><th>#</th><th>Blok</th><th>Daire No</th><th>Oturum Sekli</th><th>Tarih</th><th></th></tr></thead><tbody>';
+    filtered.forEach(function (r, i) {
+      var dt = new Date(r.created_at);
+      var ds = dt.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      var bc = r.resident_type === 'Ev Sahibi' ? 'badge-owner' : 'badge-tenant';
+      html += '<tr><td>' + (i+1) + '</td><td><strong>' + r.block + '</strong></td><td>' + r.apartment_no + '</td><td><span class="badge ' + bc + '">' + r.resident_type + '</span></td><td>' + ds + '</td><td><button class="delete-btn" title="Sil" onclick="window._deleteReg(' + r.id + ')">&#128465;</button></td></tr>';
+    });
+    html += '</tbody></table>';
+    listContainer.innerHTML = html;
+  }
+  function deleteRegistration(id) {
+    if (!confirm('Bu kaydi silmek istediginizden emin misiniz?')) return;
+    fetch('/api/register/' + id, { method: 'DELETE' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { if (data.success) { loadRegistrations(); } else { alert(data.message || 'Silinemedi.'); } })
+      .catch(function () { alert('Baglanti hatasi.'); });
+  }
+  window._deleteReg = deleteRegistration;
+  function showMessage(t, c) { messageDiv.textContent = t; messageDiv.className = 'message ' + c; }
+  function hideMessage() { messageDiv.className = 'message hidden'; }
+  function clearErrors() { document.querySelectorAll('.error').forEach(function (el) { el.classList.remove('error'); }); }
+  function setLoading(v) { submitBtn.disabled = v; btnText.className = v ? 'btn-text hidden' : 'btn-text'; btnLoading.className = v ? 'btn-loading' : 'btn-loading hidden'; }
+});
+</script>
+</body>
+</html>
