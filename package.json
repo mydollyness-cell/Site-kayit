@@ -1,0 +1,13 @@
+{
+  "name": "site-kayit",
+  "version": "1.0.0",
+  "description": "Residential site registration application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node -e \"require('./server.js')\"",
+    "dev": "node -e \"require('./server.js')\""
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
