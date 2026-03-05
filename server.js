@@ -2,7 +2,10 @@ var express = require('express');
 var path = require('path');
 var { neon } = require('@neondatabase/serverless');
 
-var sql = neon(process.env.DATABASE_URL);
+var dbUrl = process.env.DATABASE_URL || '';
+// Remove channel_binding parameter if present (incompatible with Neon serverless driver)
+dbUrl = dbUrl.replace(/[&?]channel_binding=[^&]*/g, '');
+var sql = neon(dbUrl);
 var app = express();
 var PORT = process.env.PORT || 3000;
 
@@ -38,7 +41,7 @@ app.post('/api/register', function (req, res) {
     return res.status(400).json({ success: false, message: 'Ad soyad en az 3 karakter olmalidir.' });
   }
 
-  sql('SELECT id FROM "Registration" WHERE block=$1 AND apartment_no=$2 AND resident_type=$3', [block, aptNo, residentType])
+  sql.query('SELECT id FROM "Registration" WHERE block=$1 AND apartment_no=$2 AND resident_type=$3', [block, aptNo, residentType])
     .then(function (rows) {
       if (rows.length > 0) {
         return res.status(409).json({
@@ -46,7 +49,7 @@ app.post('/api/register', function (req, res) {
           message: block + ' Blok, Daire ' + aptNo + ' icin "' + residentType + '" kaydi zaten mevcut.'
         });
       }
-      return sql('INSERT INTO "Registration" (block, apartment_no, resident_type, name_surname) VALUES ($1,$2,$3,$4)', [block, aptNo, residentType, nameSurname.trim()])
+      return sql.query('INSERT INTO "Registration" (block, apartment_no, resident_type, name_surname) VALUES ($1,$2,$3,$4)', [block, aptNo, residentType, nameSurname.trim()])
         .then(function () {
           return res.json({
             success: true,
@@ -61,7 +64,7 @@ app.post('/api/register', function (req, res) {
 });
 
 app.get('/api/registrations', function (req, res) {
-  sql('SELECT id, block, apartment_no, resident_type, created_at FROM "Registration" ORDER BY block ASC, apartment_no ASC')
+  sql.query('SELECT id, block, apartment_no, resident_type, created_at FROM "Registration" ORDER BY block ASC, apartment_no ASC')
     .then(function (rows) {
       return res.json({ success: true, data: rows, total: rows.length });
     })
@@ -74,8 +77,8 @@ app.get('/api/registrations', function (req, res) {
 app.get('/api/export-excel', function (req, res) {
   var block = req.query.block || '';
   var query = block
-    ? sql('SELECT * FROM "Registration" WHERE block=$1 ORDER BY block ASC, apartment_no ASC', [block])
-    : sql('SELECT * FROM "Registration" ORDER BY block ASC, apartment_no ASC');
+    ? sql.query('SELECT * FROM "Registration" WHERE block=$1 ORDER BY block ASC, apartment_no ASC', [block])
+    : sql.query('SELECT * FROM "Registration" ORDER BY block ASC, apartment_no ASC');
 
   query.then(function (rows) {
     var BOM = '\uFEFF';
@@ -107,7 +110,7 @@ app.get('/api/check', function (req, res) {
   }
 
   var aptNo = parseInt(apartmentNo, 10);
-  sql('SELECT id FROM "Registration" WHERE block=$1 AND apartment_no=$2 AND resident_type=$3', [block, aptNo, residentType])
+  sql.query('SELECT id FROM "Registration" WHERE block=$1 AND apartment_no=$2 AND resident_type=$3', [block, aptNo, residentType])
     .then(function (rows) {
       return res.json({ exists: rows.length > 0 });
     })
