@@ -1,31 +1,13 @@
 var express = require('express');
 var path = require('path');
-var fs = require('fs');
+var { PrismaClient } = require('@prisma/client');
 
+var prisma = new PrismaClient();
 var app = express();
-var PORT = 3000;
-var DB_FILE = path.join(__dirname, 'data.json');
+var PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-function loadData() {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      var raw = fs.readFileSync(DB_FILE, 'utf8');
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.error('Data load error:', e);
-  }
-  return [];
-}
-
-function saveData(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
-}
-
-var registrations = loadData();
 
 app.post('/api/register', function (req, res) {
   var block = req.body.block;
@@ -47,7 +29,7 @@ app.post('/api/register', function (req, res) {
     return res.status(400).json({ success: false, message: 'Gecersiz daire numarasi.' });
   }
 
-  var validTypes = ['Ev Sahibi', 'Kiraci', 'Kiracı'];
+  var validTypes = ['Ev Sahibi', 'Kiraci'];
   if (validTypes.indexOf(residentType) === -1) {
     return res.status(400).json({ success: false, message: 'Gecersiz oturum turu.' });
   }
@@ -56,91 +38,80 @@ app.post('/api/register', function (req, res) {
     return res.status(400).json({ success: false, message: 'Ad soyad en az 3 karakter olmalidir.' });
   }
 
-  var duplicate = false;
-  for (var i = 0; i < registrations.length; i++) {
-    var r = registrations[i];
-    if (r.block === block && r.apartment_no === aptNo && r.resident_type === residentType) {
-      duplicate = true;
-      break;
+  prisma.registration.findFirst({
+    where: { block: block, apartment_no: aptNo, resident_type: residentType }
+  }).then(function (existing) {
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: block + ' Blok, Daire ' + aptNo + ' icin "' + residentType + '" kaydi zaten mevcut.'
+      });
     }
-  }
-
-  if (duplicate) {
-    return res.status(409).json({
-      success: false,
-      message: block + ' Blok, Daire ' + aptNo + ' icin "' + residentType + '" kaydi zaten mevcut.'
+    return prisma.registration.create({
+      data: {
+        block: block,
+        apartment_no: aptNo,
+        resident_type: residentType,
+        name_surname: nameSurname.trim()
+      }
+    }).then(function () {
+      return res.json({
+        success: true,
+        message: 'Kayit basarili! ' + block + ' Blok, Daire ' + aptNo + ' - ' + residentType + ' olarak kaydedildi.'
+      });
     });
-  }
-
-  registrations.push({
-    id: registrations.length + 1,
-    block: block,
-    apartment_no: aptNo,
-    resident_type: residentType,
-    name_surname: nameSurname.trim(),
-    created_at: new Date().toISOString()
-  });
-
-  saveData(registrations);
-
-  return res.json({
-    success: true,
-    message: 'Kayit basarili! ' + block + ' Blok, Daire ' + aptNo + ' - ' + residentType + ' olarak kaydedildi.'
+  }).catch(function (err) {
+    console.error('Register error:', err);
+    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
   });
 });
 
 app.get('/api/registrations', function (req, res) {
-  var result = [];
-  for (var i = 0; i < registrations.length; i++) {
-    var r = registrations[i];
-    result.push({
-      id: r.id,
-      block: r.block,
-      apartment_no: r.apartment_no,
-      resident_type: r.resident_type,
-      created_at: r.created_at
+  prisma.registration.findMany({
+    orderBy: [{ block: 'asc' }, { apartment_no: 'asc' }]
+  }).then(function (rows) {
+    var result = rows.map(function (r) {
+      return {
+        id: r.id,
+        block: r.block,
+        apartment_no: r.apartment_no,
+        resident_type: r.resident_type,
+        created_at: r.created_at
+      };
     });
-  }
-
-  // Sort by block then apartment number
-  result.sort(function (a, b) {
-    if (a.block < b.block) return -1;
-    if (a.block > b.block) return 1;
-    return a.apartment_no - b.apartment_no;
+    return res.json({ success: true, data: result, total: result.length });
+  }).catch(function (err) {
+    console.error('List error:', err);
+    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
   });
-  return res.json({ success: true, data: result, total: result.length });
 });
 
 app.get('/api/export-excel', function (req, res) {
   var block = req.query.block || '';
-  var result = [];
-  for (var i = 0; i < registrations.length; i++) {
-    var r = registrations[i];
-    if (!block || r.block === block) {
-      result.push(r);
+  var where = {};
+  if (block) { where.block = block; }
+
+  prisma.registration.findMany({
+    where: where,
+    orderBy: [{ block: 'asc' }, { apartment_no: 'asc' }]
+  }).then(function (rows) {
+    var BOM = '\uFEFF';
+    var csv = BOM;
+    csv += '#;Blok;Daire No;Oturum Sekli;Ad Soyad;Kayit Tarihi\n';
+    for (var j = 0; j < rows.length; j++) {
+      var row = rows[j];
+      var dt = new Date(row.created_at);
+      var dateStr = ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear();
+      csv += (j + 1) + ';' + row.block + ';' + row.apartment_no + ';' + row.resident_type + ';' + row.name_surname + ';' + dateStr + '\n';
     }
-  }
-  result.sort(function (a, b) {
-    if (a.block < b.block) return -1;
-    if (a.block > b.block) return 1;
-    return a.apartment_no - b.apartment_no;
+    var filename = block ? 'kayitlar_' + block + '_blok.csv' : 'kayitlar_tumu.csv';
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
+    return res.send(csv);
+  }).catch(function (err) {
+    console.error('Export error:', err);
+    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
   });
-
-  // BOM for UTF-8 Excel compatibility
-  var BOM = '\uFEFF';
-  var csv = BOM;
-  csv += '#;Blok;Daire No;Oturum Sekli;Kayit Tarihi\n';
-  for (var j = 0; j < result.length; j++) {
-    var row = result[j];
-    var dt = new Date(row.created_at);
-    var dateStr = ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear();
-    csv += (j + 1) + ';' + row.block + ';' + row.apartment_no + ';' + row.resident_type + ';' + dateStr + '\n';
-  }
-
-  var filename = block ? 'kayitlar_' + block + '_blok.csv' : 'kayitlar_tumu.csv';
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="' + filename + '"');
-  return res.send(csv);
 });
 
 app.get('/api/check', function (req, res) {
@@ -153,16 +124,14 @@ app.get('/api/check', function (req, res) {
   }
 
   var aptNo = parseInt(apartmentNo, 10);
-  var exists = false;
-  for (var i = 0; i < registrations.length; i++) {
-    var r = registrations[i];
-    if (r.block === block && r.apartment_no === aptNo && r.resident_type === residentType) {
-      exists = true;
-      break;
-    }
-  }
-
-  return res.json({ exists: exists });
+  prisma.registration.findFirst({
+    where: { block: block, apartment_no: aptNo, resident_type: residentType }
+  }).then(function (row) {
+    return res.json({ exists: !!row });
+  }).catch(function (err) {
+    console.error('Check error:', err);
+    return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
+  });
 });
 
 app.listen(PORT, function () {
