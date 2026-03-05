@@ -79,16 +79,15 @@ app.get('/api/export-excel', function (req, res) {
   var query = block
     ? sql.query('SELECT * FROM "Registration" WHERE block=$1 ORDER BY block ASC, apartment_no ASC', [block])
     : sql.query('SELECT * FROM "Registration" ORDER BY block ASC, apartment_no ASC');
-
   query.then(function (rows) {
     var BOM = '\uFEFF';
     var csv = BOM;
-    csv += '#;Blok;Daire No;Oturum Sekli;Ad Soyad;Kayit Tarihi\n';
+    csv += '#;Blok;Daire No;Oturum Sekli;Kayit Tarihi\n';
     for (var j = 0; j < rows.length; j++) {
       var row = rows[j];
       var dt = new Date(row.created_at);
       var dateStr = ('0' + dt.getDate()).slice(-2) + '.' + ('0' + (dt.getMonth() + 1)).slice(-2) + '.' + dt.getFullYear();
-      csv += (j + 1) + ';' + row.block + ';' + row.apartment_no + ';' + row.resident_type + ';' + row.name_surname + ';' + dateStr + '\n';
+      csv += (j + 1) + ';' + row.block + ';' + row.apartment_no + ';' + row.resident_type + ';' + dateStr + '\n';
     }
     var filename = block ? 'kayitlar_' + block + '_blok.csv' : 'kayitlar_tumu.csv';
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -98,6 +97,21 @@ app.get('/api/export-excel', function (req, res) {
     console.error('Export error:', err);
     return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
   });
+});
+
+app.delete('/api/register/:id', function (req, res) {
+  var id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ success: false, message: 'Gecersiz kayit ID.' });
+  }
+  sql.query('DELETE FROM "Registration" WHERE id=$1', [id])
+    .then(function () {
+      return res.json({ success: true, message: 'Kayit silindi.' });
+    })
+    .catch(function (err) {
+      console.error('Delete error:', err);
+      return res.status(500).json({ success: false, message: 'Sunucu hatasi.' });
+    });
 });
 
 app.get('/api/check', function (req, res) {
