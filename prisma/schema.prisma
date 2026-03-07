@@ -14,7 +14,8 @@ model Registration {
   apartment_no  Int
   resident_type String
   name_surname  String
+  phone_number  String
   created_at    DateTime @default(now())
 
-  @@unique([block, apartment_no, resident_type])
+  @@unique([block, apartment_no, phone_number])
 }

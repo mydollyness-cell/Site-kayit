@@ -14,3 +14,7 @@ Thumbs.db
 
 # Application data
 data.json
+
+# Temp/utility files
+_git_info.txt
+PUSH_RESULT.txt
